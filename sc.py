@@ -1,4 +1,4 @@
-import os
+import argparse
 import time
 import requests 
 import sqlite3
@@ -54,19 +54,20 @@ class Item():
         return "双非"
 
 class Papani():
-    def __init__(self) -> None:
+    def __init__(self,maxpage,minpage=1) -> None:
         self.__s = requests.Session()
         self.__header = {
             "user-agent":"Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36 Edg/109.0.1518.70"
         }
         self.__s.headers.update(self.__header)
         self.__baseurl = "http://muchong.com/bbs/kaoyan.php"
-        self.__maxpage = 200
+        self.__maxpage = maxpage
+        self.__minpage = minpage
         self.__db = Database()
 
     
     def __find_page_bydate(self,date:datetime.datetime)->int:
-        i=1;j=self.__maxpage;mid = (1+j)//2;f = 1
+        i=self.__minpage;j=self.__maxpage;mid = (self.__minpage+j)//2;f = 1
         while f and i<j:
             items = self.__get_msgs_page(mid)
             for item in items:
@@ -84,15 +85,19 @@ class Papani():
         logger.info(f"Found date:{date} --> page:{mid}")
         return mid
 
-    def __update_maxpage(self):
-        pass
 
     def __get_msgs_page(self,page)->list[Item]:
-        r:requests.Response = self.__s.get(self.__baseurl,params={"page":page},timeout=10)
+        page_l = []
+        if(page>1):
+            page_l.append(page-1)
+        page_l.append(page)
+        r:requests.Response = self.__s.get(self.__baseurl,params={"page":page_l},timeout=10)
         return self.__parase_html(r.text)
 
     def __parase_html(self,text)->list[Item]:
         root:etree._Element = etree.HTML(text,etree.HTMLParser())
+        if(root is None):
+            raise Exception("parase failed")
         result:etree._Element = root.xpath(r'//tbody[@class="forum_body_manage"]')
         items = []
         for el in result[0].getchildren():
@@ -117,7 +122,7 @@ class Papani():
 
     def __get_backward_list(self)->list[int]:
         end_time = self.__db.get_pubdate(True)
-        i = 1
+        i = self.__minpage
         j = self.__find_page_bydate(end_time)
         return [x for x in range(i,j+1)]
 
@@ -139,21 +144,34 @@ class Papani():
             self.__db.get_pubdate(1)
         except sqlite3.DataError:
             logger.info("DB does not exist, init DB")
-            self.__collect_list([x for x in range(1,self.__maxpage)])
+            self.collect_range()
     
-    def collect(self):
+    def collect_auto(self):
         logger.info("Collect start")
         self.__init_run()
         while True:
-            for pages in [self.__get_backward_list(),self.__get_forward_list()]:
-                try:
+            try:
+                for pages in [self.__get_backward_list(),self.__get_forward_list()]:
                     self.__collect_list(pages)
-                except Exception as exp:   
-                    logger.error(f"Exp:{exp}, continue")
-                    continue
-                    # raise
-            logger.info(f"Collect end, the next round will start after {600}s")
-            time.sleep(600)
+            except Exception as exp:   
+                logger.error(f"Exp:{exp}, continue")
+                continue
+                # raise
+            logger.info(f"Collect end, quit")
+            break
+
+    def collect_range(self):
+        logger.info("Collect start")
+        self.__init_run()
+        while True:
+            try:
+                self.__collect_list([x for x in range(self.__minpage,self.__maxpage+1)])
+            except Exception as exp:   
+                logger.error(f"Exp:{exp}, continue")
+                continue
+                # raise
+            logger.info(f"Collect end, quit")
+            break
 
 class Database():
     def __init__(self) -> None:        
@@ -205,8 +223,16 @@ class Database():
             cur.close()
 
 def main():
-    pa = Papani()
-    pa.collect()
+    parser = argparse.ArgumentParser(description='爬取小木虫调剂信息.')
+    parser.add_argument('--maxpage', metavar='num', type=int, nargs='?',required=True ,help='结束页面的页码')
+    parser.add_argument('--minpage', metavar='num', type=int, nargs='?',default=1,help='开始页面的页码，默认从第一页开始')
+    parser.add_argument('--auto', action='store_const', default=False, const=True, help='是否开启自动模式，默认顺序存取到结束页')
+    args = parser.parse_args()
+    pa = Papani(args.maxpage,args.minpage)
+    if args.auto:
+        pa.collect_auto()
+    else:
+        pa.collect_range()
  
 if __name__=="__main__": 
     main()
