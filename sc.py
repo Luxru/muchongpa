@@ -132,7 +132,7 @@ class Papani():
             try:
                 items = self.__get_msgs_page(page_list[x])
                 rowcount = self.__db.save_msg(items)
-                logger.success(f"Insert success, records effected:{rowcount} msg-len:{len(items)}, Current page:{page}")
+                logger.success(f"Insert success, records effected:{rowcount} msg-len:{len(items)}, Current page:{page_list[x]}")
             except requests.exceptions.Timeout as exp:
                 logger.error(f"Connection timeout: {exp}")
                 time.sleep(10)
