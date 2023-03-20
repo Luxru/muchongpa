@@ -127,9 +127,10 @@ class Papani():
         return [x for x in range(i,j+1)]
 
     def __collect_list(self,page_list:list[int]): 
-        for page in page_list:
+        x = 0
+        while x<len(page_list):
             try:
-                items = self.__get_msgs_page(page)
+                items = self.__get_msgs_page(page_list[x])
                 rowcount = self.__db.save_msg(items)
                 logger.success(f"Insert success, records effected:{rowcount} msg-len:{len(items)}, Current page:{page}")
             except requests.exceptions.Timeout as exp:
@@ -137,6 +138,7 @@ class Papani():
                 time.sleep(10)
                 continue
             else:
+                x+=1
                 time.sleep(0.01)
    
     def collect_auto(self):
