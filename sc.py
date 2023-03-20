@@ -138,17 +138,9 @@ class Papani():
                 continue
             else:
                 time.sleep(0.01)
-
-    def __init_run(self):
-        try:
-            self.__db.get_pubdate(1)
-        except sqlite3.DataError:
-            logger.info("DB does not exist, init DB")
-            self.collect_range()
-    
+   
     def collect_auto(self):
-        logger.info("Collect start")
-        self.__init_run()
+        logger.info("Collect start") 
         while True:
             try:
                 for pages in [self.__get_backward_list(),self.__get_forward_list()]:
@@ -162,7 +154,6 @@ class Papani():
 
     def collect_range(self):
         logger.info("Collect start")
-        self.__init_run()
         while True:
             try:
                 self.__collect_list([x for x in range(self.__minpage,self.__maxpage+1)])
