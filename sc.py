@@ -217,7 +217,7 @@ class Database():
 
 def main():
     parser = argparse.ArgumentParser(description='爬取小木虫调剂信息.')
-    parser.add_argument('--maxpage', metavar='num', type=int, nargs='?',required=True ,help='结束页面的页码')
+    parser.add_argument('maxpage', metavar='maxpage', type=int,help='结束页面的页码')
     parser.add_argument('--minpage', metavar='num', type=int, nargs='?',default=1,help='开始页面的页码，默认从第一页开始')
     parser.add_argument('--auto', action='store_const', default=False, const=True, help='是否开启自动模式，默认顺序存取到结束页')
     args = parser.parse_args()
